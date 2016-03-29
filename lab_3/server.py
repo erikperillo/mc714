@@ -4,16 +4,55 @@ import socket
 import thread
 import oarg
 
-def echo(index, client_socket, client_address, recv_buffer=4096):
+class Server(object):
+    def __init__(self, host, port, recv_buffer=4096):
+        self.connections = []
+        self.host = host
+        self.port = port
+        self.recv_buffer = recv_buffer
+        #starting socket
+        self.start_socket()
+        #listening
+        self.listen()
+
+    def start_socket(self):
+        #creating socket    
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)    
+        #use already occupied address
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        #binding 
+        self.socket.bind((self.host, self.port))
+
+    def listen(self, backlog=16):
+        #becoming a server
+        self.socket.listen(backlog)
+
+    def main_loop(self):
+         while True:
+            client_socket, client_address = self.socket.accept()
+            print "address:", client_address
+            self.connections.append((client_socket, client_address))
+            thread.start_new(chat, (len(self.connections)-1, self,
+                client_socket)) 
+
+    def broadcast(self, data):
+        print data
+        for (client_socket, __) in self.connections:
+            client_socket.sendall(data) 
+
+    def __del__(self):
+        self.socket.close()
+
+def chat(thr_id, server, client_socket, recv_buffer=4096):
     while True:
-        data = server_socket.recv(recv_buffer)
-        print "data:", data
+        data = client_socket.recv(recv_buffer)
+        server.broadcast("message from #%d: %s" % (thr_id, data))
 
 def main():
     port = oarg.Oarg("-p --port", 1234, "port to start server")
     host = oarg.Oarg("-h --host", "", "host to start server")
     recv_buffer = oarg.Oarg("-b --buffer", 4096, "receiver buffer size")
-    hlp = oarg.Oarg("-h --help", False, "this help message")
+    hlp = oarg.Oarg("--help", False, "this help message")
 
     oarg.parse()
 
@@ -21,30 +60,12 @@ def main():
         oarg.describeArgs("options:")
         exit()
 
-    #address of server (reachable by any address the machine has)
-    server_address = (host.val, port.val)
+    print "starting server ..."
+    server = Server(host.val, port.val, recv_buffer.val)
+    print "started server on port #%d" % server.port
 
-    #list of clients connected to server
-    connections = []
-
-    #creating socket    
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)    
-    #binding 
-    server_socket.bind(server_address)
-    #becoming a server
-    server_socket.listen(1)
-
-    print "started server on port #%d" % port.val
-
-    try:
-        while True:
-            client_socket, client_address = server_socket.accept()
-            print "connected by", client_address
-            connections.append((client_socket, client_address))
-            data = client_socket.recv(recv_buffer.val)
-            print "data:", data 
-    except KeyboardInterrupt:
-        print "server finished"
+    print "starting server main loop"
+    server.main_loop()
 
 if __name__ == "__main__":
     main()

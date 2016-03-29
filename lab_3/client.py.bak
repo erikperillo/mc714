@@ -1,0 +1,58 @@
+#!/usr/bin/env python2.7
+
+import socket
+import thread
+import oarg
+import time
+
+class Client(object):
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        #starting socket
+        self.start_socket()
+
+    def start_socket(self, backlog=16):
+        #creating socket    
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)    
+        #use already occupied address
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        #binding 
+        self.socket.bind((self.host, self.port))
+
+    def main_loop(self):
+        thread.start_new(listener, (self.socket, 4096))
+        while True:
+            data = input()
+            self.socket.sendall(data)
+
+    def __del__(self):
+        self.socket.close()
+
+def listener(socket, recv_buffer=4096):
+    while True:
+        print "insert message: ",
+        data = socket.recv(recv_buffer)
+        print data
+
+def main():
+    port = oarg.Oarg("-p --port", 1234, "server port")
+    host = oarg.Oarg("-h --host", "1.1.1.1", "server host")
+    message = oarg.Oarg("-m --message", "ey b0ss", "message to send")
+    hlp = oarg.Oarg("-h --help", False, "this help message")
+
+    oarg.parse()
+
+    if hlp.val:
+        oarg.describeArgs("options:")
+        exit()
+
+    print "starting client ..."
+    client = Client(host.val, port.val)
+    print "started client on" % (client.host, client.port)
+
+    print "starting client main loop"
+    server.main_loop()
+
+if __name__ == "__main__":
+    main()
