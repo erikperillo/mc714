@@ -1,0 +1,9 @@
+this application implements a client-server chat service using sockets.
+clients can send messages to the server, which will broadcast all 
+messages to all connected clients.
+
+how to use:
+	-lauch server.py
+	-lauch multiple client instances via client.py. they are already
+		configured to connect to server address.
+	-done! you can now send messages.
